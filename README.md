@@ -1,5 +1,22 @@
 # app-data-wise
 
+# Como rodar
+
+## 1) Abrir o notebook
+- No VS Code, abra este repositório.
+- No Explorer, vá até **get_table.ipynb** (na pasta `python/` ou onde você salvou) e abra.
+
+> Dica: se estiver em terminal, você pode subir um nível com `cd ..` até chegar na pasta do projeto.
+
+## 2) Instalar dependências
+
+- Para rodar a aplicação, aperte na célula abaixo e clique no botão (Execute Cell and Below)
+
+Na **primeira célula** do notebook, vai rodar:
+
+%pip install requests pandas matplotlib openpyxl
+
+# Atributos
 - NM_ENTIDADE
 - DC_ACERTOS
 - DC_PONTUACAO
