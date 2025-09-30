@@ -1,139 +1,86 @@
-import requests
-import pandas as pd
-import numpy as np
-import plotly.express as px
 import streamlit as st
+import pandas as pd
+import requests
 
-INSTALLATION_ID = "63e7d8d8-a570-42ba-a9af-8ce8bf044cf1"
-SESSION_TOKEN   = "r:e936f6f0d778e4447c34540e4aeb61a8"
+# URL da API
+url = "https://criancaalfabetizada.caeddigital.net/portal/functions/getDadosResultado"
 
-AVALIACAO_2024  = "AV22024"
-AVALIACAO_2025  = "AV22025"
-AGREGADO        = "4306809"   # município IBGE 
+# esses sao os indicadores de MATEMÁTICA do 1º ano (14) ao 5º ano (18) 
+indicadores_mt = [
+    "11988MT14","11988MT15","11988MT16","11988MT17","11988MT18",
+    "61988MT14","61988MT15","61988MT16","61988MT17","61988MT18",
+    "71988MT14","71988MT15","71988MT16","71988MT17","71988MT18",
+    "12016MT14","12016MT15","12016MT16","12016MT17","12016MT18",
+    "62016MT14","62016MT15","62016MT16","62016MT17","62016MT18",
+    "72016MT14","72016MT15","72016MT16","72016MT17","72016MT18"
+]
 
-API_URL = "https://criancaalfabetizada.caeddigital.net/portal/functions/getDadosResultado"
-APP_ID, CLIENT_VER = "portal", "js2.19.0"
+# minha função para buscar dados de um ciclo
+def get_dados(ciclo):
+    payload = {
+        "CD_INDICADOR": indicadores_mt,
+        "agregado": "z8yg99e75f22",  # turma
+        "filtros": [
+            {"operation": "equalTo","field": "DADOS.VL_FILTRO_AVALIACAO","value": ciclo}
+        ],
+        "filtrosAdicionais": [],
+        "nivelAbaixo": "1",
+        "ordenacao": [["NM_ENTIDADE","ASC"]],
+        "collectionResultado": None,
+        "CD_INDICADOR_LABEL": [],
+        "TP_ENTIDADE_LABEL": "01",
+        "_ApplicationId": "portal",
+        "_ClientVersion": "js2.19.0",
+        "_InstallationId": "63e7d8d8-a570-42ba-a9af-8ce8bf044cf1",
+        "_SessionToken": "r:e936f6f0d778e4447c34540e4aeb61a8"
+    }
 
-ETAPAS = {
-    "1º ANO": "ENSINO FUNDAMENTAL DE 9 ANOS - 1º ANO",
-    "2º ANO": "ENSINO FUNDAMENTAL DE 9 ANOS - 2º ANO",
-    "3º ANO": "ENSINO FUNDAMENTAL DE 9 ANOS - 3º ANO",
-    "4º ANO": "ENSINO FUNDAMENTAL DE 9 ANOS - 4º ANO",
-    "5º ANO": "ENSINO FUNDAMENTAL DE 9 ANOS - 5º ANO",
-}
-INDICADORES = {
-    "LÍNGUA PORTUGUESA": ["12016LP14","12016LP15","12016LP16","12016LP17","12016LP18"],
-    "MATEMÁTICA":        ["12016MT14","12016MT15","12016MT16","12016MT17","12016MT18"],
-}
+    res = requests.post(url, json=payload)
+    data = res.json()["result"]
 
-# essa eh minha api
-def call_api(payload: dict) -> pd.DataFrame:
-    payload.update({
-        "_ApplicationId": APP_ID,
-        "_ClientVersion": CLIENT_VER,
-        "_InstallationId": INSTALLATION_ID,
-        "_SessionToken": SESSION_TOKEN
-    })
-    r = requests.post(API_URL, json=payload, timeout=60)
-    if r.status_code != 200:
-        try:
-            msg = r.json()
-        except Exception:
-            msg = r.text
-        st.error(f"HTTP {r.status_code} — erro da API:\n{msg}")
-        return pd.DataFrame()
-    return pd.json_normalize(r.json().get("result", []))
+    # filtrando somente Matemática
+    dados_matematica = [d for d in data if d["VL_FILTRO_DISCIPLINA"] == "MATEMÁTICA"]
 
-def media_por_serie(disciplina: str, avaliacao: str) -> pd.DataFrame:
-    linhas = []
-    for serie, etapa in ETAPAS.items():
-        payload = {
-            "CD_INDICADOR": INDICADORES[disciplina],
-            "agregado": AGREGADO,
-            "filtros": [
-                {"operation":"equalTo","field":"DADOS.VL_FILTRO_AVALIACAO","value":avaliacao},
-                {"operation":"equalTo","field":"DADOS.VL_FILTRO_ETAPA","value":etapa},
-                {"operation":"equalTo","field":"DADOS.VL_FILTRO_DISCIPLINA","value":disciplina},
-            ],
-            "filtrosAdicionais": [
-                {"field":"DADOS.VL_FILTRO_REDE","value":"PÚBLICA","operation":"equalTo"}
-            ],
-            "nivelAbaixo":"1",
-            "ordenacao":[["NM_ENTIDADE","ASC"]],
-            "collectionResultado": None,
-            "CD_INDICADOR_LABEL": [],
-            "TP_ENTIDADE_LABEL": "01",
-        }
-        df = call_api(payload)
-        media = None
-        if not df.empty and "TX_ACERTOS" in df.columns:
-            df["TX_ACERTOS"] = pd.to_numeric(df["TX_ACERTOS"], errors="coerce")
-            media = df["TX_ACERTOS"].mean()
-        linhas.append({"Série": serie, "Disciplina": disciplina, "Média": media})
-    out = pd.DataFrame(linhas)
-    out["Série"] = pd.Categorical(out["Série"], categories=list(ETAPAS.keys()), ordered=True)
-    return out.sort_values("Série")
+    df = pd.DataFrame(dados_matematica)
 
-# meu grafico
-st.set_page_config(page_title="Gráfico 2 — Δ 2025−2024 por série", layout="wide")
+    # lista de colunas desejadas -> O que o professor quer
+    colunas_desejadas = [
+        "NM_ENTIDADE","DC_ACERTOS","DC_PONTUACAO","TX_ACERTOS",
+        "NU_ACERTO_HABILIDADE_1","NU_ACERTO_HABILIDADE_2",
+        "NU_ACERTO_HABILIDADE_3","NU_ACERTO_HABILIDADE_4",
+        "NU_ACERTO_HABILIDADE_5","NU_ACERTO_HABILIDADE_6",
+        "NU_ACERTO_HABILIDADE_7","NU_ACERTO_HABILIDADE_8",
+        "NU_ACERTO_HABILIDADE_9","NU_ACERTO_HABILIDADE_10",
+        "VL_FILTRO_DISCIPLINA","VL_FILTRO_AVALIACAO"
+    ]
 
-st.title("📊 Gráfico 2 — Evolução (Δ 2025 − 2024) por série")
-sub_nivel = "Município (IBGE)" if AGREGADO.isdigit() and len(AGREGADO) == 7 else "Escola (CD_INSTITUICAO)"
-st.subheader(f"LP × MT • Rede Pública • Âmbito: {sub_nivel} = {AGREGADO}")
-st.markdown(
-    f"**Avaliações:** 2024 = `{AVALIACAO_2024}` • 2025 = `{AVALIACAO_2025}`  \n"
-    "Heatmap mostra a **variação (p.p.)** da média de **TX_ACERTOS**. "
-    "**Verde** = melhorou; **vermelho** = caiu; célula vazia = faltou um dos anos."
-)
+    # Seleciona apenas as colunas que existem
+    df = df[[c for c in colunas_desejadas if c in df.columns]]
 
-# dados
-df24_lp = media_por_serie("LÍNGUA PORTUGUESA", AVALIACAO_2024)
-df25_lp = media_por_serie("LÍNGUA PORTUGUESA", AVALIACAO_2025)
-df24_mt = media_por_serie("MATEMÁTICA",        AVALIACAO_2024)
-df25_mt = media_por_serie("MATEMÁTICA",        AVALIACAO_2025)
+    return df
 
-def calc_delta(df24, df25, disciplina):
-    m = pd.merge(
-        df25[["Série","Média"]].rename(columns={"Média":"M25"}),
-        df24[["Série","Média"]].rename(columns={"Média":"M24"}),
-        on="Série", how="outer"
-    )
-    m["Disciplina"] = disciplina
-    m["Delta"] = m["M25"] - m["M24"]
-    m["Tem_2024"] = ~m["M24"].isna()
-    m["Tem_2025"] = ~m["M25"].isna()
-    return m
+# busca dados dos ciclos
+df_c1 = get_dados("AV12025")     
+df_c2 = get_dados("AV22025")
 
-delta_full = pd.concat([
-    calc_delta(df24_lp, df25_lp, "LÍNGUA PORTUGUESA"),
-    calc_delta(df24_mt, df25_mt, "MATEMÁTICA"),
-], ignore_index=True)
+df_c1["CICLO"] = "C1"
+df_c2["CICLO"] = "C2"
 
-# pivot para heatmap -- mas aqui o plotly ta pegafo 
-pivot = delta_full.pivot(index="Série", columns="Disciplina", values="Delta") \
-                  .reindex(index=list(ETAPAS.keys()), columns=["LÍNGUA PORTUGUESA","MATEMÁTICA"])
 
-if pivot.isna().all().all():
-    st.error("Não foi possível calcular Δ porque falta 2024 e/ou 2025 em todas as séries. Verifique os rótulos das avaliações.")
-else:
-    max_abs = float(np.nanmax(np.abs(pivot.values))) if np.isfinite(np.nanmax(np.abs(pivot.values))) else 1.0
-    fig = px.imshow(
-        pivot,
-        text_auto=".1f",
-        color_continuous_scale="RdYlGn",
-        zmin=-max_abs, zmax=max_abs, zmid=0,
-        aspect="auto",
-        labels=dict(color="Δ p.p.") #melhorar a barra
-    )
-    fig.update_layout(margin=dict(l=20, r=20, t=10, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+# LOGICA DE ORDENAR PARA QUE CADA ALINO APAREÇA COM C1 E LOGO ABAIXO C2
+df_analises = pd.concat([df_c1, df_c2], ignore_index=True) #----> concatena os dois ciclos para análises, o ignore index evita problemas de indexação
+df_analises["CICLO"] = pd.Categorical(df_analises["CICLO"], categories=["C1", "C2"], ordered=True) # ----> garantir a ordem C1 antes de C2
+df_analises = df_analises.sort_values(["NM_ENTIDADE", "CICLO"]).reset_index(drop=True) 
 
-    # Lista onde faltou algum ano (para a fala pública) -> rever 
-    faltas = delta_full.loc[(~delta_full["Tem_2024"]) | (~delta_full["Tem_2025"]),
-                            ["Série","Disciplina","Tem_2024","Tem_2025"]]
-    if not faltas.empty:
-        st.caption("⚠️ Séries/disciplinas sem um dos anos (células ficam vazias no heatmap):")
-        faltas = faltas.replace({True:"ok", False:"faltou"})
-        st.dataframe(faltas, use_container_width=True)
 
-st.caption("Fonte: Plataforma Criança Alfabetizada (CAEd). Métrica: Δ (2025 − 2024) da média de TX_ACERTOS por série e disciplina.")
+# streamlit interface
+st.title("Resultados de Matemática - Encanto (2025)")
+
+st.subheader("Tabela do Ciclo 1 (AV12025)")
+st.dataframe(df_c1)
+
+st.subheader("Tabela do Ciclo 2 (AV22025)")
+st.dataframe(df_c2)
+
+st.subheader("Tabela de Análises dos Alunos (Comparação C1 x C2)")
+st.dataframe(df_analises)

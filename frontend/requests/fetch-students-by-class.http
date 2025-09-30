@@ -76,7 +76,7 @@ content-type: application/json
     {
       "operation": "equalTo",
       "field": "DADOS.VL_FILTRO_AVALIACAO",
-      "value": "AV22025"
+      "value": "AV12025"
     }
   ],
   "filtrosAdicionais": [],
