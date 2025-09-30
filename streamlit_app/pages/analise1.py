@@ -82,9 +82,9 @@ def media_por_serie(disciplina: str,  avaliacao: str) -> pd.DataFrame:
     return out.sort_values("Série")
 
 #LAYOUT STREAMLIT
-st.set_page_config(page_title="Gráfico 1 - Evolução 2024×2025", layout="wide")
+st.set_page_config(page_title="Análise 1 - Evolução 2024×2025", layout="wide")
 
-st.title("Gráfico 1 — Evolução dos Resultados (1º ao 5º ano)")
+st.title("❖ Análise 1 - Evolução dos Resultados (1º ao 5º ano)")
 st.markdown(f"""
 **Comparativo por disciplina** — Rede Pública  
 **Âmbito:** Município (IBGE) = `{AGREGADO}`  

@@ -77,8 +77,8 @@ def extrair_habilidades(row: pd.Series) -> pd.DataFrame:
     return df
 
 # ===================== UI =====================
-st.set_page_config(page_title="Gráfico 4 - Habilidades por turma (2025)", layout="wide")
-st.title("Gráfico 4 — Habilidades por Turma (apenas 2025)")
+st.set_page_config(page_title="Análise 4 - Habilidades por turma (2025)", layout="wide")
+st.title("❖ Análise 4 - Habilidades por Turma (Apenas 2025)")
 st.caption("Selecione uma escola e depois uma turma. Os gráficos mostram percentual de acertos por habilidade em Língua Portuguesa e Matemática.")
 st.markdown("---")
 
