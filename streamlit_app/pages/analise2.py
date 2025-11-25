@@ -123,11 +123,11 @@ df_analises = pd.concat([df_c1, df_c2], ignore_index=True)
 df_analises["CICLO"] = pd.Categorical(df_analises["CICLO"], categories=["C1", "C2"], ordered=True)
 df_analises = df_analises.sort_values(["NM_ENTIDADE", "CICLO"], kind="stable").reset_index(drop=True)
 
-st.subheader("◇ Tabela de Análises (C1 seguido de C2 para cada aluno) - {disciplina}")
+st.subheader("◇ Tabela de Análises (C1 seguido de C2 para cada aluno)")
 st.dataframe(df_analises[["NM_ENTIDADE","CICLO","TX_ACERTOS","DC_PONTUACAO"]], use_container_width=True)
 
 # ================== GRÁFICO (barras horizontais) ==================
-st.subheader("◈ Comparativo Visual - Taxa de Acertos por Aluno (C1 × C2) - {disciplina}")
+st.subheader("◈ Comparativo Visual - Taxa de Acertos por Aluno (C1 × C2)")
 
 df_plot = df_analises[["NM_ENTIDADE", "CICLO", "TX_ACERTOS"]].dropna().copy()
 
@@ -145,7 +145,8 @@ fig = px.bar(
     y="NM_ENTIDADE", x="TX_ACERTOS",
     color="CICLO", barmode="group",
     orientation="h",
-    category_orders={"NM_ENTIDADE": ordem},
+    # Garante que dentro de cada aluno a barra Azul (C1) venha antes da Laranja (C2)
+    category_orders={"NM_ENTIDADE": ordem, "CICLO": ["C2", "C1"]},
     color_discrete_map={"C1": "#1f77b4", "C2": "#ff7f0e"},  # azul / laranja
     title=f"Taxa de Acertos por Aluno — {disciplina} — C1 ({CICLO_1}) vs C2 ({CICLO_2})",
 )
@@ -165,7 +166,7 @@ if not df_plot.empty:
     pivot = df_analises.pivot(index="NM_ENTIDADE", columns="CICLO", values="TX_ACERTOS")
     if {"C1","C2"}.issubset(pivot.columns):
         pivot["Δ (C2 - C1)"] = pivot["C2"] - pivot["C1"]
-        st.subheader("◈ Variação por aluno (Δ C2 − C1) - {disciplina}")
+        st.subheader("◈ Variação por aluno (Δ C2 − C1)" )
         st.dataframe(
             pivot.sort_values("Δ (C2 - C1)", ascending=False).round(1).reset_index(),
             use_container_width=True
